@@ -133,7 +133,7 @@ jobs:
 
           import android.Manifest;
           import android.app.Activity;
-          import android.app.PrintManager;
+          import android.print.PrintManager;
           import android.content.ContentResolver;
           import android.content.ContentUris;
           import android.content.Context;
