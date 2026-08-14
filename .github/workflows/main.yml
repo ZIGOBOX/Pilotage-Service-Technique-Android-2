@@ -80,8 +80,8 @@ jobs:
                   applicationId 'fr.zigobox.pilotagetechnique'
                   minSdk 23
                   targetSdk 35
-                  versionCode 1
-                  versionName '1.0'
+                  versionCode 2
+                  versionName '1.1'
               }
 
               compileOptions {
@@ -375,7 +375,11 @@ jobs:
                           "state.personalEvents=state.personalEvents.filter(function(x){return !(x&&x.externalSource===source&&x.date>=rangeStart&&x.date<=rangeEnd);});" +
                           "events.forEach(function(e){state.personalEvents.push({id:'outlook-'+e.eventId+'-'+e.begin,no:'OUT-'+e.eventId,date:e.date,start:e.start||'',end:e.end||'',type:'Rendez-vous Outlook',title:e.title||'Rendez-vous Outlook',location:e.location||'',priority:'Normale',status:'À faire',notes:e.notes||'',attachments:[],externalSource:source,externalEventId:String(e.eventId),externalBegin:e.begin,externalAllDay:!!e.allDay});});" +
                           "window.PSTMainState.save(false);" +
-                          "try{if(typeof safeRenderAll==='function')safeRenderAll();}catch(e){}" +
+                          "try{if(typeof window.PSTRefreshPersonalAgenda==='function')window.PSTRefreshPersonalAgenda();}catch(e){console.warn('Refresh Mon calendrier',e);}" +
+                          "try{if(typeof renderDashboardTodayAgenda==='function')renderDashboardTodayAgenda();}catch(e){console.warn('Refresh planning aujourd hui',e);}" +
+                          "try{if(typeof renderPersonal==='function')renderPersonal();}catch(e){console.warn('Refresh agenda personnel',e);}" +
+                          "setTimeout(function(){try{if(typeof window.PSTRefreshPersonalAgenda==='function')window.PSTRefreshPersonalAgenda();if(typeof renderDashboardTodayAgenda==='function')renderDashboardTodayAgenda();}catch(e){}},500);" +
+                          "try{window.dispatchEvent(new CustomEvent('pst:android-calendar-synced',{detail:{count:events.length}}));}catch(e){}" +
                           "try{if(typeof toast==='function')toast(events.length+' rendez-vous Outlook synchronisés');}catch(e){}" +
                           "}catch(err){console.error('Android Outlook sync',err);}" +
                           "})(" + eventsJson + ",'" + result.rangeStart + "','" + result.rangeEnd + "');";
