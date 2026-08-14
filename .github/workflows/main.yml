@@ -191,7 +191,7 @@ jobs:
                   s.setBuiltInZoomControls(false);
                   s.setDisplayZoomControls(false);
                   s.setMediaPlaybackRequiresUserGesture(false);
-                  s.setUserAgentString(s.getUserAgentString() + " PilotageServiceTechniqueAndroid/1.2");
+                  s.setUserAgentString(s.getUserAgentString() + " PilotageServiceTechniqueAndroid/1.3");
 
                   webView.addJavascriptInterface(new AndroidBridge(), "AndroidBridge");
 
@@ -292,7 +292,12 @@ jobs:
                               String haystack = (account + " " + accountType + " " + owner + " " + display).toLowerCase(Locale.ROOT);
                               boolean workAccount = haystack.contains(WORK_DOMAIN);
                               boolean microsoftCalendar = haystack.contains("microsoft") || haystack.contains("outlook") || haystack.contains("exchange") || haystack.contains("office365") || haystack.contains("office 365");
-                              if (workAccount || microsoftCalendar) calendarIds.add(id);
+                              boolean googleCalendar = haystack.contains("com.google") || account.toLowerCase(Locale.ROOT).endsWith("@gmail.com") || haystack.contains("google");
+                              String d = display.toLowerCase(Locale.ROOT);
+                              boolean noiseCalendar = d.contains("anniversaire") || d.contains("birthday") || d.contains("jours fériés") || d.contains("jours feries") || d.contains("holiday");
+                              // Outlook peut exposer certains calendriers partagés avec un nom/type non explicite.
+                              // On garde donc tous les calendriers visibles non-Google, en plus des calendriers Microsoft clairement identifiés.
+                              if (!noiseCalendar && (workAccount || microsoftCalendar || !googleCalendar)) calendarIds.add(id);
                           }
                       }
                   }
@@ -337,17 +342,38 @@ jobs:
                                   String description = c.getString(6);
                                   boolean allDay = c.getInt(7) == 1;
 
-                                  JSONObject o = new JSONObject();
-                                  o.put("eventId", eventId);
-                                  o.put("begin", begin);
-                                  o.put("date", allDay ? formatDateUtc(begin) : formatDate(begin));
-                                  o.put("start", allDay ? "" : formatTime(begin));
-                                  o.put("end", allDay ? "" : formatTime(finish));
-                                  o.put("title", title == null || title.trim().isEmpty() ? "Rendez-vous Outlook" : title);
-                                  o.put("location", location == null ? "" : location);
-                                  o.put("notes", description == null ? "" : description);
-                                  o.put("allDay", allDay);
-                                  events.put(o);
+                                  if (allDay) {
+                                      // Android stocke les événements « toute la journée » en UTC et la fin est exclusive.
+                                      // Pour un événement sur plusieurs jours, on crée une entrée pour CHAQUE jour afin qu'il soit visible dans Mon calendrier.
+                                      long day = begin;
+                                      long exclusiveEnd = finish > begin ? finish : begin + 86400000L;
+                                      while (day < exclusiveEnd) {
+                                          JSONObject o = new JSONObject();
+                                          o.put("eventId", eventId);
+                                          o.put("begin", day);
+                                          o.put("date", formatDateUtc(day));
+                                          o.put("start", "");
+                                          o.put("end", "");
+                                          o.put("title", title == null || title.trim().isEmpty() ? "Rendez-vous Outlook" : title);
+                                          o.put("location", location == null ? "" : location);
+                                          o.put("notes", description == null ? "" : description);
+                                          o.put("allDay", true);
+                                          events.put(o);
+                                          day += 86400000L;
+                                      }
+                                  } else {
+                                      JSONObject o = new JSONObject();
+                                      o.put("eventId", eventId);
+                                      o.put("begin", begin);
+                                      o.put("date", formatDate(begin));
+                                      o.put("start", formatTime(begin));
+                                      o.put("end", formatTime(finish));
+                                      o.put("title", title == null || title.trim().isEmpty() ? "Rendez-vous Outlook" : title);
+                                      o.put("location", location == null ? "" : location);
+                                      o.put("notes", description == null ? "" : description);
+                                      o.put("allDay", false);
+                                      events.put(o);
+                                  }
                               }
                           }
                       }
