@@ -80,8 +80,8 @@ jobs:
                   applicationId 'fr.zigobox.pilotagetechnique'
                   minSdk 23
                   targetSdk 35
-                  versionCode 2
-                  versionName '1.1'
+                  versionCode 3
+                  versionName '1.2'
               }
 
               compileOptions {
@@ -191,7 +191,7 @@ jobs:
                   s.setBuiltInZoomControls(false);
                   s.setDisplayZoomControls(false);
                   s.setMediaPlaybackRequiresUserGesture(false);
-                  s.setUserAgentString(s.getUserAgentString() + " PilotageServiceTechniqueAndroid/1.0");
+                  s.setUserAgentString(s.getUserAgentString() + " PilotageServiceTechniqueAndroid/1.2");
 
                   webView.addJavascriptInterface(new AndroidBridge(), "AndroidBridge");
 
@@ -280,15 +280,19 @@ jobs:
                   ContentResolver cr = getContentResolver();
                   Set<Long> calendarIds = new HashSet<>();
 
-                  String[] calProjection = {Calendars._ID, Calendars.ACCOUNT_NAME, Calendars.CALENDAR_DISPLAY_NAME, Calendars.VISIBLE};
+                  String[] calProjection = {Calendars._ID, Calendars.ACCOUNT_NAME, Calendars.ACCOUNT_TYPE, Calendars.OWNER_ACCOUNT, Calendars.CALENDAR_DISPLAY_NAME, Calendars.VISIBLE};
                   try (Cursor c = cr.query(Calendars.CONTENT_URI, calProjection, Calendars.VISIBLE + "=1", null, null)) {
                       if (c != null) {
                           while (c.moveToNext()) {
                               long id = c.getLong(0);
                               String account = c.getString(1) == null ? "" : c.getString(1);
-                              String display = c.getString(2) == null ? "" : c.getString(2);
-                              String haystack = (account + " " + display).toLowerCase(Locale.ROOT);
-                              if (haystack.contains(WORK_DOMAIN)) calendarIds.add(id);
+                              String accountType = c.getString(2) == null ? "" : c.getString(2);
+                              String owner = c.getString(3) == null ? "" : c.getString(3);
+                              String display = c.getString(4) == null ? "" : c.getString(4);
+                              String haystack = (account + " " + accountType + " " + owner + " " + display).toLowerCase(Locale.ROOT);
+                              boolean workAccount = haystack.contains(WORK_DOMAIN);
+                              boolean microsoftCalendar = haystack.contains("microsoft") || haystack.contains("outlook") || haystack.contains("exchange") || haystack.contains("office365") || haystack.contains("office 365");
+                              if (workAccount || microsoftCalendar) calendarIds.add(id);
                           }
                       }
                   }
@@ -336,7 +340,7 @@ jobs:
                                   JSONObject o = new JSONObject();
                                   o.put("eventId", eventId);
                                   o.put("begin", begin);
-                                  o.put("date", formatDate(begin));
+                                  o.put("date", allDay ? formatDateUtc(begin) : formatDate(begin));
                                   o.put("start", allDay ? "" : formatTime(begin));
                                   o.put("end", allDay ? "" : formatTime(finish));
                                   o.put("title", title == null || title.trim().isEmpty() ? "Rendez-vous Outlook" : title);
@@ -358,6 +362,12 @@ jobs:
                   return f.format(new Date(millis));
               }
 
+              private String formatDateUtc(long millis) {
+                  SimpleDateFormat f = new SimpleDateFormat("yyyy-MM-dd", Locale.FRANCE);
+                  f.setTimeZone(TimeZone.getTimeZone("UTC"));
+                  return f.format(new Date(millis));
+              }
+
               private String formatTime(long millis) {
                   SimpleDateFormat f = new SimpleDateFormat("HH:mm", Locale.FRANCE);
                   f.setTimeZone(TimeZone.getDefault());
@@ -373,7 +383,7 @@ jobs:
                           "if(!state||!Array.isArray(state.personalEvents)){setTimeout(function(){try{AndroidBridge.syncCalendar();}catch(e){}},1800);return;}" +
                           "var source='android-outlook';" +
                           "state.personalEvents=state.personalEvents.filter(function(x){return !(x&&x.externalSource===source&&x.date>=rangeStart&&x.date<=rangeEnd);});" +
-                          "events.forEach(function(e){state.personalEvents.push({id:'outlook-'+e.eventId+'-'+e.begin,no:'OUT-'+e.eventId,date:e.date,start:e.start||'',end:e.end||'',type:'Rendez-vous Outlook',title:e.title||'Rendez-vous Outlook',location:e.location||'',priority:'Normale',status:'À faire',notes:e.notes||'',attachments:[],externalSource:source,externalEventId:String(e.eventId),externalBegin:e.begin,externalAllDay:!!e.allDay});});" +
+                          "events.forEach(function(e){state.personalEvents.push({id:'outlook-'+e.eventId+'-'+e.begin,no:'OUT-'+e.eventId,date:e.date,start:e.start||'',end:e.end||'',type:e.allDay?'Événement Outlook — toute la journée':'Rendez-vous Outlook',title:e.title||'Rendez-vous Outlook',location:e.location||'',priority:'Normale',status:'À faire',notes:e.notes||'',attachments:[],externalSource:source,externalEventId:String(e.eventId),externalBegin:e.begin,externalAllDay:!!e.allDay});});" +
                           "window.PSTMainState.save(false);" +
                           "try{if(typeof window.PSTRefreshPersonalAgenda==='function')window.PSTRefreshPersonalAgenda();}catch(e){console.warn('Refresh Mon calendrier',e);}" +
                           "try{if(typeof renderDashboardTodayAgenda==='function')renderDashboardTodayAgenda();}catch(e){console.warn('Refresh planning aujourd hui',e);}" +
