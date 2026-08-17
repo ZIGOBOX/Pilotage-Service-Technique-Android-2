@@ -1,0 +1,7 @@
+V147.47 — 300 phrases de motivation
+
+- 300 phrases de motivation différentes sont intégrées directement dans l'application.
+- Une phrase est affichée par jour dans le bandeau du tableau de bord.
+- La phrase change automatiquement selon la date locale.
+- Les 300 formulations sont embarquées dans l'application : aucune connexion Internet nécessaire.
+- Les fonctions de la V147.46 sont conservées.
